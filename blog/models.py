@@ -6,8 +6,32 @@ from django.db.models import Count
 
 class TagQuerySet(models.QuerySet):
     def popular(self):
-        popular_tags = self.annotate(tags_count=Count('posts__tags')).order_by('-tags_count')
+        popular_tags = self.annotate(
+            tags_count=Count('posts__tags')).order_by('-tags_count')
         return popular_tags
+
+    def fetch_with_posts_count(self):
+        tags_with_posts = self.annotate(posts_count=Count('posts'))
+        return tags_with_posts
+
+
+class PostQuerySet(models.QuerySet):
+    def popular(self):
+        popular_posts = self.annotate(
+            likes_count=Count('likes')).order_by('-likes_count')
+        return popular_posts
+
+    def fetch_with_comments_count(self):
+        posts = self.all()
+        posts_ids = [post.id for post in posts]
+        posts_with_comments = Post.objects.filter(id__in=posts_ids).annotate(comments_count=Count('comments'))
+        return posts_with_comments
+
+    # def fetch_with_tags_count(self):
+    #     posts = self.all()
+    #     posts_ids = [post.id for post in posts]
+    #     posts_with_tags_count = Post.objects.filter(id__in=posts_ids).annotate(tags_count=Count('tags'))
+    #     return posts_with_tags_count
 
 
 class Post(models.Model):
@@ -17,17 +41,22 @@ class Post(models.Model):
     image = models.ImageField("Картинка")
     published_at = models.DateTimeField("Дата и время публикации")
 
-    author = models.ForeignKey(User, on_delete=models.CASCADE, verbose_name="Автор",
-                               limit_choices_to={'is_staff': True})
-    likes = models.ManyToManyField(User, related_name="liked_posts", verbose_name="Кто лайкнул", blank=True)
-    tags = models.ManyToManyField("Tag", related_name="posts", verbose_name="Теги")
-
+    author = models.ForeignKey(
+        User, on_delete=models.CASCADE,
+        verbose_name="Автор", limit_choices_to={'is_staff': True})
+    likes = models.ManyToManyField(
+        User, related_name="liked_posts",
+        verbose_name="Кто лайкнул", blank=True)
+    tags = models.ManyToManyField(
+        "Tag", related_name="posts", verbose_name="Теги")
+    objects = PostQuerySet.as_manager()
 
     def __str__(self):
         return self.title
 
     def get_absolute_url(self):
         return reverse('post_detail', args={'slug': self.slug})
+
 
     class Meta:
         ordering = ['-published_at']
@@ -55,9 +84,12 @@ class Tag(models.Model):
 
 
 class Comment(models.Model):
-    post = models.ForeignKey("Post", related_name='comments', on_delete=models.CASCADE,
-                             verbose_name="Пост, к которому написан")
-    author = models.ForeignKey(User, on_delete=models.CASCADE, verbose_name="Автор")
+    post = models.ForeignKey(
+        "Post", related_name='comments',
+        on_delete=models.CASCADE,
+        verbose_name="Пост, к которому написан")
+    author = models.ForeignKey(
+        User, on_delete=models.CASCADE, verbose_name="Автор")
 
     text = models.TextField("Текст комментария")
     published_at = models.DateTimeField("Дата и время публикации")
