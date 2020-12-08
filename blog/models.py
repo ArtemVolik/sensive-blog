@@ -27,12 +27,6 @@ class PostQuerySet(models.QuerySet):
         posts_with_comments = Post.objects.filter(id__in=posts_ids).annotate(comments_count=Count('comments'))
         return posts_with_comments
 
-    # def fetch_with_tags_count(self):
-    #     posts = self.all()
-    #     posts_ids = [post.id for post in posts]
-    #     posts_with_tags_count = Post.objects.filter(id__in=posts_ids).annotate(tags_count=Count('tags'))
-    #     return posts_with_tags_count
-
 
 class Post(models.Model):
     title = models.CharField("Заголовок", max_length=200)

@@ -5,7 +5,6 @@ import pdb
 from django.db.models import Prefetch
 
 
-
 def get_related_posts_count(tag):
     return tag.posts.count()
 
@@ -25,7 +24,6 @@ def serialize_post(post):
 
 
 def serialize_post_optimized(post):
-
     related_tags = post.tags.all()
     # pdb.set_trace()
     return {
@@ -36,8 +34,9 @@ def serialize_post_optimized(post):
         "image_url": post.image.url if post.image else None,
         "published_at": post.published_at,
         "slug": post.slug,
-        "tags": [serialize_tag_optimized(tag) for tag in related_tags.fetch_with_posts_count()],
-        'first_tag_title': post.tags.all()[0].title,
+        "tags": [serialize_tag_optimized(tag)
+                 for tag in related_tags],
+        'first_tag_title': related_tags[0].title,
     }
 
 
@@ -47,6 +46,7 @@ def serialize_tag(tag):
         'posts_with_tag': tag.posts.count,
     }
 
+
 def serialize_tag_optimized(tag):
     return {
         'title': tag.title,
@@ -55,15 +55,16 @@ def serialize_tag_optimized(tag):
 
 
 def index(request):
+    prefetch = Prefetch('tags', queryset=Tag.objects.fetch_with_posts_count())
+
     most_popular_posts = Post.objects.popular()[:5] \
-        .fetch_with_comments_count().prefetch_related('author', 'tags')
+        .fetch_with_comments_count().prefetch_related('author', prefetch)
+    # pdb.set_trace()
+    fresh_posts = Post.objects.order_by('-published_at')[:5] \
+        .fetch_with_comments_count().prefetch_related('author', prefetch)
+    most_fresh_posts = fresh_posts.reverse()
 
-    fresh_posts = Post.objects.order_by('-published_at')[:5]\
-        .fetch_with_comments_count().prefetch_related('author', 'tags')
-    most_fresh_posts = fresh_posts.order_by('published_at')
-
-
-    most_popular_tags = Tag.objects.popular()[:5].fetch_with_posts_count().prefetch_related('posts')
+    most_popular_tags = Tag.objects.popular().fetch_with_posts_count()[:5]
 
 
     context = {
