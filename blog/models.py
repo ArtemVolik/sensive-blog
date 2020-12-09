@@ -7,11 +7,13 @@ from django.db.models import Count
 class TagQuerySet(models.QuerySet):
     def popular(self):
         popular_tags = self.annotate(
-            tags_count=Count('posts__tags')).order_by('-tags_count')
+            posts_count=Count('posts')).order_by('-posts_count')
         return popular_tags
 
     def fetch_with_posts_count(self):
-        tags_with_posts = self.annotate(posts_count=Count('posts'))
+        tags = self.all()
+        tags_ids = [tag.id for tag in tags]
+        tags_with_posts = Tag.objects.filter(id__in=tags_ids).annotate(posts_count=Count('posts'))
         return tags_with_posts
 
 
@@ -24,7 +26,8 @@ class PostQuerySet(models.QuerySet):
     def fetch_with_comments_count(self):
         posts = self.all()
         posts_ids = [post.id for post in posts]
-        posts_with_comments = Post.objects.filter(id__in=posts_ids).annotate(comments_count=Count('comments'))
+        posts_with_comments = Post.objects.filter(id__in=posts_ids)\
+            .annotate(comments_count=Count('comments'))
         return posts_with_comments
 
 
@@ -50,7 +53,6 @@ class Post(models.Model):
 
     def get_absolute_url(self):
         return reverse('post_detail', args={'slug': self.slug})
-
 
     class Meta:
         ordering = ['-published_at']
